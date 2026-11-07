@@ -1,3 +1,9 @@
+# Environment & Secret files (ẨN TUYỆT ĐỐI KHÔNG ĐƯỢC ĐẨY LÊN GITHUB)
+.env
+.env.*
+*.env
+!.env.example
+
 # Logs
 logs
 *.log
