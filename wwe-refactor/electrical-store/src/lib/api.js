@@ -8,23 +8,48 @@ export function buildQuery(params) {
   return s ? `?${s}` : '';
 }
 
-export async function api(path, body, signal) {
+export async function api(path, optionsOrBody, signal) {
+  let method = 'GET';
+  let bodyPayload = undefined;
+  let headers = {};
+
+  if (optionsOrBody) {
+    if (
+      typeof optionsOrBody === 'object' &&
+      optionsOrBody !== null &&
+      'method' in optionsOrBody &&
+      ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(String(optionsOrBody.method).toUpperCase())
+    ) {
+      method = String(optionsOrBody.method).toUpperCase();
+      const rawBody = optionsOrBody.data !== undefined ? optionsOrBody.data : optionsOrBody.body;
+      if (rawBody !== undefined) {
+        bodyPayload = JSON.stringify(rawBody);
+        headers['Content-Type'] = 'application/json';
+      }
+    } else {
+      method = 'POST';
+      bodyPayload = JSON.stringify(optionsOrBody);
+      headers['Content-Type'] = 'application/json';
+    }
+  }
+
   const res = await fetch(path, {
-    method: body ? 'POST' : 'GET',
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    method,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
+    body: bodyPayload,
     signal,
-  })
-  let data = await res.json().catch(() => ({}))
+  });
+
+  let data = await res.json().catch(() => ({}));
   // Server errors arrive as { error: { code, message } } — flatten so pages
   // can keep treating `data.error` as a display string.
   if (data?.error && typeof data.error !== 'string') {
-    data = { ...data, error: data.error.message ?? 'Yêu cầu thất bại' }
+    data = { ...data, error: data.error.message ?? 'Yêu cầu thất bại' };
   }
-  return { ok: res.ok, data }
+  return { ok: res.ok, data };
 }
 
 // GET with query params: apiGet('/api/products', { q: 'esp', limit: 12 })
 export async function apiGet(path, params, signal) {
-  return api(path + buildQuery(params), undefined, signal)
+  return api(path + buildQuery(params), undefined, signal);
 }

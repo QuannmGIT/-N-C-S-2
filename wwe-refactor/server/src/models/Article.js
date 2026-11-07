@@ -18,7 +18,8 @@ const articleSchema = new mongoose.Schema({
   tags:        [{ type: String }],
   toc:         [{ type: String }],
   contentHtml: { type: String, required: true },
-  featured:    { type: Boolean, default: false }
+  featured:    { type: Boolean, default: false },
+  isDeleted:   { type: Boolean, default: false } // Xóa mềm (ẩn khỏi Blog, admin vẫn thấy)
 }, { timestamps: true });
 
 articleSchema.index({ title: "text", excerpt: "text" });

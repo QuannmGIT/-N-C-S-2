@@ -10,6 +10,8 @@ import ProjectsPage from './pages/ProjectsPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import AccountPage from './pages/AccountPage.jsx'
+import AdminLoginPage from './pages/AdminLoginPage.jsx'
+import AdminDashboardPage from './pages/AdminDashboardPage.jsx'
 
 /**
  * Cross-page anchors (blog nav -> /#contact-section, project CTA ->
@@ -46,6 +48,13 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/account" element={<AccountPage />} />
+          {/* Dedicated Dev/Admin Console Routes */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/dev/login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/dev" element={<AdminDashboardPage />} />
+          <Route path="/admin/blog" element={<AdminDashboardPage defaultTab="articles" />} />
+          <Route path="/dev/blog" element={<AdminDashboardPage defaultTab="articles" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </ToastProvider>

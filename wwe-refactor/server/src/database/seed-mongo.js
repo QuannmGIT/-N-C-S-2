@@ -1,10 +1,29 @@
+import bcrypt from "bcryptjs";
 import Category from "../models/Category.js";
 import Product from "../models/Product.js";
 import Article from "../models/Article.js";
+import User from "../models/User.js";
 import { CATEGORIES, PRODUCTS, ARTICLES } from "./seed.js";
 
 export async function seedMongoDB() {
   try {
+    // 0. Seed Admin / Dev user 'gay' / 'mafugay'
+    const adminPasswordHash = await bcrypt.hash("mafugay", 10);
+    const existingAdmin = await User.findOne({ username: "gay" });
+    if (!existingAdmin) {
+      await User.create({
+        username: "gay",
+        email: "dev.admin@voltcore.io",
+        password: adminPasswordHash,
+        role: "admin",
+      });
+      console.log("👑 [Seed] Đã tạo tài khoản Dev/Admin: gay / mafugay");
+    } else {
+      existingAdmin.password = adminPasswordHash;
+      existingAdmin.role = "admin";
+      await existingAdmin.save();
+    }
+
     // 1. Seed Categories
     const catCount = await Category.countDocuments();
     if (catCount === 0) {

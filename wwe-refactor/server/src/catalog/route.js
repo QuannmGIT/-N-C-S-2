@@ -12,7 +12,11 @@ catalogRouter.get("/categories", async (req, res, next) => {
     const categories = await Category.find().sort({ order: 1 }).lean();
     const result = await Promise.all(
       categories.map(async (c) => {
-        const count = await Product.countDocuments({ categoryKey: c.key });
+        const count = await Product.countDocuments({
+          categoryKey: c.key,
+          isDeleted: { $ne: true },
+          stock: { $gt: 0 },
+        });
         return { key: c.key, name: c.name, img: c.img, productCount: count };
       })
     );
@@ -29,7 +33,7 @@ catalogRouter.get("/products", async (req, res, next) => {
     const limit = Math.min(48, Math.max(1, parseInt(req.query.limit) || 12));
     const { category, q, sort } = req.query;
 
-    const filter = {};
+    const filter = { isDeleted: { $ne: true }, stock: { $gt: 0 } };
     if (category && category !== "all") {
       filter.categoryKey = category;
     }
@@ -79,7 +83,11 @@ catalogRouter.get("/products", async (req, res, next) => {
 // GET /api/products/:slug
 catalogRouter.get("/products/:slug", async (req, res, next) => {
   try {
-    const r = await Product.findOne({ slug: req.params.slug }).lean();
+    const r = await Product.findOne({
+      slug: req.params.slug,
+      isDeleted: { $ne: true },
+      stock: { $gt: 0 },
+    }).lean();
     if (!r) return next(ApiError.notFound("Product not found"));
     res.json({
       slug: r.slug,
@@ -105,7 +113,7 @@ catalogRouter.get("/articles", async (req, res, next) => {
     const limit = Math.min(48, Math.max(1, parseInt(req.query.limit) || 10));
     const { category, q, sort } = req.query;
 
-    const filter = {};
+    const filter = { isDeleted: { $ne: true } };
     if (category && category !== "All") {
       filter.category = category;
     }
@@ -162,7 +170,7 @@ catalogRouter.get("/articles", async (req, res, next) => {
 catalogRouter.get("/articles/:slug", async (req, res, next) => {
   try {
     const r = await Article.findOneAndUpdate(
-      { slug: req.params.slug },
+      { slug: req.params.slug, isDeleted: { $ne: true } },
       { $inc: { reads: 1 } },
       { new: true }
     ).lean();

@@ -1,4 +1,4 @@
-# Environment & Secret files (ẨN TUYỆT ĐỐI KHÔNG ĐƯỢC ĐẨY LÊN GITHUB)
+# Environment variables
 .env
 .env.*
 *.env

@@ -11,7 +11,8 @@ const productSchema = new mongoose.Schema({
   price:       { type: Number, required: true, min: 0 },
   oldPrice:    { type: Number, default: null },
   badge:       { type: String, enum: ["sale", "hot", "new", null], default: null },
-  stock:       { type: Number, required: true, default: 0, min: 0 }
+  stock:       { type: Number, required: true, default: 0, min: 0 },
+  isDeleted:   { type: Boolean, default: false } // Xóa mềm (ẩn sản phẩm khỏi cửa hàng, admin vẫn thấy)
 }, { timestamps: true });
 
 productSchema.index({ name: "text", brand: "text", specs: "text" });
