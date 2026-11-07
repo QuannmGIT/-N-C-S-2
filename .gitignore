@@ -1,0 +1,35 @@
+# Environment & Secret files (ẨN TUYỆT ĐỐI KHÔNG ĐƯỢC ĐẨY LÊN GITHUB)
+.env
+.env.*
+*.env
+!.env.example
+
+# Dependencies
+node_modules/
+*/node_modules/
+*/*/node_modules/
+
+# Production build outputs
+dist/
+dist-ssr/
+build/
+
+# SQLite databases & temp data
+*.db
+*.db-shm
+*.db-wal
+server/data/
+data/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
