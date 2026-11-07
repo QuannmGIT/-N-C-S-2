@@ -1,0 +1,4 @@
+/* intentionally empty — all styling comes from the original static CSS files
+   (public/styles/variant/{style,blog,prj,auth}.css plus
+   public/styles/{shop,post,blog}-page.css), loaded per route by
+   usePageStylesheets, exactly like the multi-page site did. */

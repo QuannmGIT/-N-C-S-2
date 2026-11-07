@@ -1,1 +1,2 @@
-# -N-C-S-2
+# bwd
+RANDOM

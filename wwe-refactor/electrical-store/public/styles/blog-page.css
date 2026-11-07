@@ -1,0 +1,41 @@
+/* Ported verbatim from the inline <style> block in the original blog.html.
+   Loaded per-route together with css/blog.css. */
+
+.filter-pill[data-cat="Tutorials"].active   { background:#c8410f; border-color:#c8410f; color:#fff; }
+.filter-pill[data-cat="Reviews"].active     { background:#1a6b4a; border-color:#1a6b4a; color:#fff; }
+.filter-pill[data-cat="Technical"].active   { background:#2563a8; border-color:#2563a8; color:#fff; }
+.filter-pill[data-cat="Tips & Tricks"].active { background:#7c3aed; border-color:#7c3aed; color:#fff; }
+.filter-pill[data-cat="AI & IoT"].active    { background:#0891b2; border-color:#0891b2; color:#fff; }
+.filter-pill[data-cat="Projects"].active    { background:#b45309; border-color:#b45309; color:#fff; }
+
+.post-card.hidden, .post-horizontal.hidden { display:none; }
+
+.no-results {
+  display: none; grid-column:1/-1; text-align:center;
+  padding:60px 20px; color:var(--ink3); font-size:0.95rem;
+}
+.no-results.show { display:block; }
+
+.topic.active { background:var(--ink); color:#fff; border-color:var(--ink); }
+
+.sort-row {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;
+}
+.sort-select {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:7px 14px; font-family:'JetBrains Mono',monospace;
+  font-size:0.8rem; color:var(--ink); cursor:pointer; outline:none;
+}
+.result-count { font-size:0.78rem; color:var(--ink3); padding:12px 0 0; display:block; min-height:28px; }
+
+.featured-section.hidden { display:none; }
+
+.show-more-topics {
+  font-size:0.74rem; color:var(--accent); cursor:pointer; margin-top:8px;
+  background:none; border:none; font-family:'JetBrains Mono',monospace;
+  font-weight:700; padding:0;
+}
+.topic.extra { display:none; }
+.topic.extra.visible { display:inline-block; }
+.post-card { cursor:pointer; }
+.post-horizontal { cursor:pointer; }

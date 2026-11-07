@@ -1,0 +1,26 @@
+import mongoose from "mongoose";
+
+const articleSchema = new mongoose.Schema({
+  slug:        { type: String, required: true, unique: true, lowercase: true },
+  title:       { type: String, required: true },
+  category:    { type: String, required: true, index: true },
+  catLabel:    { type: String },
+  catColor:    { type: String, default: null },
+  authorName:  { type: String, required: true },
+  avatar:      { type: String, default: "/assets/icons/userlogo.svg" },
+  published:   { type: String },
+  minutes:     { type: Number, default: 5 },
+  reads:       { type: Number, default: 0 },
+  img:         { type: String, default: null },
+  emoji:       { type: String, default: "🔌" },
+  gradient:    { type: String, default: null },
+  excerpt:     { type: String, default: "" },
+  tags:        [{ type: String }],
+  toc:         [{ type: String }],
+  contentHtml: { type: String, required: true },
+  featured:    { type: Boolean, default: false }
+}, { timestamps: true });
+
+articleSchema.index({ title: "text", excerpt: "text" });
+
+export default mongoose.model("Article", articleSchema);
