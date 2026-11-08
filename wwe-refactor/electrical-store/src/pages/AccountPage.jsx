@@ -241,6 +241,30 @@ export default function AccountPage() {
             </button>
           </div>
 
+          <div className="auth-card" style={{ padding: "24px 28px" }}>
+            <div className="auth-header" style={{ marginBottom: 12 }}>
+              <div className="auth-badge">
+                <span className="badge-dot"></span> Community Author
+              </div>
+              <h2 style={{ fontFamily: MONO, fontSize: "1.2rem", fontWeight: 700, margin: "6px 0" }}>
+                Bài viết <span>của bạn</span>
+              </h2>
+              <p style={{ fontSize: "0.82rem" }}>Chia sẻ kinh nghiệm, dự án DIY và tài liệu vi điều khiển lên VoltCore Blog</p>
+            </div>
+            <Link
+              to="/blog/create"
+              className="btn-auth"
+              style={{
+                display: "block",
+                textAlign: "center",
+                textDecoration: "none",
+                marginTop: 14,
+              }}
+            >
+              ✍️ Đăng bài viết mới &amp; Quản lý bài viết →
+            </Link>
+          </div>
+
           <div className="auth-card" style={{ padding: "30px 32px" }}>
             <div className="auth-header">
               <div className="auth-badge">

@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import authRouter from "./auth/route.js";
 import catalogRouter from "./catalog/route.js";
 import adminRouter from "./admin/route.js";
+import orderRouter from "./orders/route.js";
 import { errorHandler } from "./handler/error-handler.js";
 import { ApiError } from "./handler/error.js";
 
@@ -16,6 +17,11 @@ const hasSpa = existsSync(join(DIST, "index.html"));
 
 export default function createApp() {
   const app = express();
+
+  app.use((req, res, next) => {
+    console.log(`[HTTP] ${req.method} ${req.url}`);
+    next();
+  });
 
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ extended: true, limit: "25mb" }));
@@ -34,6 +40,7 @@ export default function createApp() {
 
   app.use("/api/auth", authRouter); // documented API namespace for external clients
   app.use("/api/admin", adminRouter); // dev/admin management endpoints
+  app.use("/api/orders", orderRouter); // checkout, invoice, VietQR endpoints
   app.use("/api", catalogRouter); // storefront catalogue (public, read-only)
 
   if (hasSpa) {

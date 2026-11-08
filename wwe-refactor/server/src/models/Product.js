@@ -8,6 +8,10 @@ const productSchema = new mongoose.Schema({
   specs:       { type: String, default: "" },       // Chuỗi tóm tắt hiển thị trên card
   detailSpecs: { type: mongoose.Schema.Types.Mixed, default: {} }, // Thông số kỹ thuật chi tiết
   img:         { type: String, required: true },
+  imageData: {
+    data:        { type: Buffer, default: null }, // Lưu dữ liệu nhị phân nguyên bản của ảnh (BSON BinData)
+    contentType: { type: String, default: "image/png" }
+  },
   price:       { type: Number, required: true, min: 0 },
   oldPrice:    { type: Number, default: null },
   badge:       { type: String, enum: ["sale", "hot", "new", null], default: null },

@@ -34,6 +34,74 @@ const CATEGORY_STYLE = {
   Projects: { color: "#f59e0b" },
 };
 
+function BlogThumb({ item, className = "post-thumb", emojiSize = "2.5rem" }) {
+  const [failed, setFailed] = useState(false);
+
+  // Tự động khôi phục trạng thái khi item hoặc URL ảnh thay đổi / load lại trang
+  useEffect(() => {
+    setFailed(false);
+  }, [item?.img, item?.slug]);
+
+  const hasImage = Boolean(item?.img) && !failed;
+
+  return (
+    <div
+      className={className}
+      style={{
+        background: item?.gradient ?? "linear-gradient(135deg, #1a0d08, #2d1506)",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {item?.img ? (
+        <img
+          src={item.img}
+          alt={item.title || ""}
+          loading="lazy"
+          onError={(e) => {
+            // Chỉ đánh dấu lỗi khi trình duyệt đã tải xong mà ảnh thực sự hỏng hoặc 404
+            if (e.target && e.target.naturalWidth === 0) {
+              setFailed(true);
+            }
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: hasImage ? "block" : "none",
+            zIndex: 1,
+          }}
+        />
+      ) : null}
+
+      {!hasImage ? (
+        <span style={{ fontSize: emojiSize, userSelect: "none", zIndex: 1 }}>{item?.emoji || "🚀"}</span>
+      ) : null}
+
+      {item?.catLabel && className === "post-thumb" ? (
+        <span
+          className="post-cat"
+          style={{
+            ...(CATEGORY_STYLE[item.category] ?? {}),
+            zIndex: 2,
+          }}
+        >
+          {item.catLabel}
+        </span>
+      ) : null}
+
+      {item?.catLabel && className === "featured-img" ? (
+        <div className="featured-tag" style={{ zIndex: 2 }}>{item.catLabel}</div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function BlogPage() {
   const ready = usePageStylesheets([
     "/styles/variant/blog.css",
@@ -118,11 +186,6 @@ export default function BlogPage() {
           { label: "Blog", to: "/blog", active: true },
           { label: "Contact", to: "/#contact-section" },
         ]}
-        right={
-          <Link to="/shop" className="nav-cta">
-            Shop Now →
-          </Link>
-        }
       />
 
       <header className="blog-hero">
@@ -153,6 +216,28 @@ export default function BlogPage() {
             <div className="hero-stat-num">4.9★</div>
             <div className="hero-stat-label">Rating</div>
           </div>
+        </div>
+
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "center", gap: 12 }}>
+          <Link
+            to="/blog/create"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--accent, #c8410f)",
+              color: "#fff",
+              padding: "10px 24px",
+              borderRadius: "8px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              textDecoration: "none",
+              boxShadow: "0 4px 14px rgba(200, 65, 15, 0.25)",
+            }}
+          >
+            <span>✍️</span> Đăng bài viết chia sẻ kiến thức
+          </Link>
         </div>
       </header>
 
@@ -220,21 +305,7 @@ export default function BlogPage() {
                 data-cat={featured.category}
                 onClick={() => goPost(featured.slug)}
               >
-                <div
-                  className="featured-img"
-                  style={{
-                    ...bgStyle(featured),
-                    backgroundColor: "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {!featured.img ? (
-                    <span style={{ fontSize: "4rem" }}>{featured.emoji}</span>
-                  ) : null}
-                  <div className="featured-tag">{featured.catLabel}</div>
-                </div>
+                <BlogThumb item={featured} className="featured-img" emojiSize="4rem" />
                 <div className="featured-body">
                   <div className="featured-meta">
                     <span>
@@ -300,25 +371,7 @@ export default function BlogPage() {
                   key={p.slug}
                   onClick={() => goPost(p.slug)}
                 >
-                  <div
-                    className="post-thumb"
-                    style={{
-                      ...bgStyle(p),
-                      display: p.img ? undefined : "flex",
-                      alignItems: p.img ? undefined : "center",
-                      justifyContent: p.img ? undefined : "center",
-                    }}
-                  >
-                    {!p.img ? (
-                      <span style={{ fontSize: "2.5rem" }}>{p.emoji}</span>
-                    ) : null}
-                    <span
-                      className="post-cat"
-                      style={CATEGORY_STYLE[p.category] ?? undefined}
-                    >
-                      {p.catLabel}
-                    </span>
-                  </div>
+                  <BlogThumb item={p} className="post-thumb" emojiSize="2.5rem" />
                   <div className="post-body">
                     <div className="post-meta">
                       <span>{dateLabel(p.published)}</span>
@@ -357,19 +410,7 @@ export default function BlogPage() {
           {horizontals.map((h) => (
             <Reveal key={h.slug} threshold={0.06}>
               <div className="post-horizontal" onClick={() => goPost(h.slug)}>
-                <div
-                  className="post-h-thumb"
-                  style={{
-                    ...bgStyle(h),
-                    display: h.img ? undefined : "flex",
-                    alignItems: h.img ? undefined : "center",
-                    justifyContent: h.img ? undefined : "center",
-                    color: "var(--paper)",
-                    fontSize: "2rem",
-                  }}
-                >
-                  {!h.img ? h.emoji : null}
-                </div>
+                <BlogThumb item={h} className="post-h-thumb" emojiSize="2rem" />
                 <div>
                   <div
                     className="post-h-cat"

@@ -4,8 +4,11 @@ import { AuthProvider } from './lib/auth.jsx'
 import { ToastProvider } from './lib/toast.jsx'
 import HomePage from './pages/HomePage.jsx'
 import ShopPage from './pages/ShopPage.jsx'
+import CheckoutPage from './pages/CheckoutPage.jsx'
+import PaymentInvoicePage from './pages/PaymentInvoicePage.jsx'
 import BlogPage from './pages/BlogPage.jsx'
 import PostPage from './pages/PostPage.jsx'
+import CreatePostPage from './pages/CreatePostPage.jsx'
 import ProjectsPage from './pages/ProjectsPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
@@ -42,7 +45,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment/:orderCode" element={<PaymentInvoicePage />} />
+          <Route path="/invoice/:orderCode" element={<PaymentInvoicePage />} />
           <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/create" element={<CreatePostPage />} />
+          <Route path="/create-post" element={<CreatePostPage />} />
           <Route path="/blog/:slug" element={<PostPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -55,6 +63,8 @@ export default function App() {
           <Route path="/dev" element={<AdminDashboardPage />} />
           <Route path="/admin/blog" element={<AdminDashboardPage defaultTab="articles" />} />
           <Route path="/dev/blog" element={<AdminDashboardPage defaultTab="articles" />} />
+          <Route path="/admin/revenue" element={<AdminDashboardPage defaultTab="revenue" />} />
+          <Route path="/dev/revenue" element={<AdminDashboardPage defaultTab="revenue" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </ToastProvider>

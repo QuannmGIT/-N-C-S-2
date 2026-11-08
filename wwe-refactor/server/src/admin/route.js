@@ -5,8 +5,9 @@ import User from "../models/User.js";
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
 import Article from "../models/Article.js";
+import Order from "../models/Order.js";
 import { ApiError } from "../handler/error.js";
-import { seedMongoDB } from "../database/seed-mongo.js";
+import { seedMongoDB, loadBinaryImage } from "../database/seed-mongo.js";
 
 const adminRouter = Router();
 
@@ -169,6 +170,7 @@ adminRouter.delete("/users/:id", requireAdmin, async (req, res, next) => {
 adminRouter.get("/products", requireAdmin, async (req, res, next) => {
   try {
     const products = await Product.find()
+      .select("-imageData.data")
       .sort({ createdAt: -1 })
       .lean();
     res.json(products);
@@ -215,13 +217,16 @@ adminRouter.post("/products", requireAdmin, async (req, res, next) => {
     // Khi số lượng về 0 thì sản phẩm phải bị ẩn đi khỏi cửa hàng
     const shouldHide = numStock <= 0;
 
+    const bin = loadBinaryImage(img);
+
     const product = await Product.create({
       slug,
       name: String(name).trim(),
       categoryKey: String(categoryKey).trim(),
       brand: brand ? String(brand).trim() : "VoltCore",
       specs: specs ? String(specs).trim() : "",
-      img: String(img).trim(),
+      img: `/api/products/${slug}/image`,
+      imageData: bin || { data: null, contentType: "image/png" },
       price: numPrice,
       oldPrice: oldPrice ? Number(oldPrice) : null,
       stock: numStock,
@@ -263,7 +268,21 @@ adminRouter.put("/products/:id", requireAdmin, async (req, res, next) => {
     };
     if (brand !== undefined) updateData.brand = String(brand).trim();
     if (specs !== undefined) updateData.specs = String(specs).trim();
-    if (img !== undefined && String(img).trim()) updateData.img = String(img).trim();
+    if (img !== undefined && String(img).trim()) {
+      const rawImg = String(img).trim();
+      const bin = loadBinaryImage(rawImg);
+      if (bin) {
+        updateData.imageData = bin;
+        const existing = await Product.findById(req.params.id).select("slug");
+        if (existing) {
+          updateData.img = `/api/products/${existing.slug}/image`;
+        } else {
+          updateData.img = rawImg;
+        }
+      } else {
+        updateData.img = rawImg;
+      }
+    }
     if (oldPrice !== undefined) updateData.oldPrice = oldPrice ? Number(oldPrice) : null;
 
     // Khi số lượng về 0 thì sản phẩm phải bị ẩn đi khỏi cửa hàng
@@ -331,7 +350,10 @@ adminRouter.post("/reset-seed", requireAdmin, async (req, res, next) => {
  */
 adminRouter.get("/articles", requireAdmin, async (req, res, next) => {
   try {
-    const articles = await Article.find().sort({ createdAt: -1 }).lean();
+    const articles = await Article.find()
+      .select("-imageData.data")
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(articles);
   } catch (err) {
     next(err);
@@ -392,6 +414,8 @@ adminRouter.post("/articles", requireAdmin, async (req, res, next) => {
 
     const finalContentHtml = contentHtml && String(contentHtml).trim() ? String(contentHtml).trim() : `<p>${String(excerpt || title).trim()}</p>`;
 
+    const bin = loadBinaryImage(img);
+
     const article = await Article.create({
       slug,
       title: String(title).trim(),
@@ -401,7 +425,8 @@ adminRouter.post("/articles", requireAdmin, async (req, res, next) => {
       published: dateFormatted,
       minutes: Number(minutes) > 0 ? Number(minutes) : 5,
       reads: 0,
-      img: img && String(img).trim() ? String(img).trim() : null,
+      img: bin ? `/api/articles/${slug}/image` : (img && String(img).trim() ? String(img).trim() : null),
+      imageData: bin || { data: null, contentType: "image/png" },
       emoji: "🔌",
       excerpt: excerpt ? String(excerpt).trim() : "",
       contentHtml: finalContentHtml,
@@ -453,7 +478,26 @@ adminRouter.put("/articles/:id", requireAdmin, async (req, res, next) => {
       updateData.contentHtml = String(contentHtml).trim();
       updateData.toc = extractTocFromHtml(updateData.contentHtml);
     }
-    if (img !== undefined) updateData.img = String(img).trim() || null;
+    if (img !== undefined) {
+      const rawImg = String(img).trim();
+      if (rawImg) {
+        const bin = loadBinaryImage(rawImg);
+        if (bin) {
+          updateData.imageData = bin;
+          const existing = await Article.findById(req.params.id).select("slug");
+          if (existing) {
+            updateData.img = `/api/articles/${existing.slug}/image`;
+          } else {
+            updateData.img = rawImg;
+          }
+        } else {
+          updateData.img = rawImg;
+        }
+      } else {
+        updateData.img = null;
+        updateData.imageData = { data: null, contentType: "image/png" };
+      }
+    }
     if (featured !== undefined) updateData.featured = Boolean(featured);
     if (tags !== undefined) {
       updateData.tags = Array.isArray(tags)
@@ -501,6 +545,122 @@ adminRouter.delete("/articles/:id", requireAdmin, async (req, res, next) => {
     const article = await Article.findByIdAndDelete(req.params.id);
     if (!article) return next(ApiError.notFound("Không tìm thấy bài viết"));
     res.json({ success: true, message: `Đã xóa bài viết ${article.title}` });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * 18. Quản lý doanh thu & danh sách đơn hàng cho Dev
+ */
+adminRouter.get("/revenue", requireAdmin, async (req, res, next) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 }).lean();
+
+    let totalRevenue = 0;
+    let pendingRevenue = 0;
+    let paidOrdersCount = 0;
+    let unpaidOrdersCount = 0;
+    let cancelledOrdersCount = 0;
+    let vietqrRevenue = 0;
+    let codRevenue = 0;
+
+    const productSalesMap = {};
+
+    for (const ord of orders) {
+      if (ord.paymentStatus === "PAID") {
+        totalRevenue += ord.totalAmount || 0;
+        paidOrdersCount += 1;
+        if (ord.paymentMethod === "BANK_TRANSFER") {
+          vietqrRevenue += ord.totalAmount || 0;
+        } else if (ord.paymentMethod === "COD") {
+          codRevenue += ord.totalAmount || 0;
+        }
+
+        // Tích lũy doanh số sản phẩm đã thanh toán
+        if (Array.isArray(ord.items)) {
+          for (const item of ord.items) {
+            const key = item.slug || item.name;
+            if (!productSalesMap[key]) {
+              productSalesMap[key] = {
+                name: item.name,
+                slug: item.slug,
+                image: item.image,
+                quantity: 0,
+                revenue: 0,
+              };
+            }
+            productSalesMap[key].quantity += item.quantity || 1;
+            productSalesMap[key].revenue += (item.price || 0) * (item.quantity || 1);
+          }
+        }
+      } else if (ord.status === "CANCELLED") {
+        cancelledOrdersCount += 1;
+      } else {
+        pendingRevenue += ord.totalAmount || 0;
+        unpaidOrdersCount += 1;
+      }
+    }
+
+    const topProducts = Object.values(productSalesMap).sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+
+    res.json({
+      summary: {
+        totalRevenue,
+        pendingRevenue,
+        totalOrders: orders.length,
+        paidOrdersCount,
+        unpaidOrdersCount,
+        cancelledOrdersCount,
+        vietqrRevenue,
+        codRevenue,
+        aov: paidOrdersCount > 0 ? Math.round(totalRevenue / paidOrdersCount) : 0,
+      },
+      orders,
+      topProducts,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * 19. Cập nhật trạng thái đơn hàng & gạch nợ thanh toán
+ */
+adminRouter.patch("/orders/:id/status", requireAdmin, async (req, res, next) => {
+  try {
+    const { status, paymentStatus, note } = req.body ?? {};
+    const order = await Order.findById(req.params.id);
+    if (!order) return next(ApiError.notFound("Không tìm thấy đơn hàng"));
+
+    if (status && ["PENDING", "CONFIRMED", "SHIPPING", "COMPLETED", "CANCELLED"].includes(status)) {
+      order.status = status;
+    }
+    if (paymentStatus && ["UNPAID", "PAID"].includes(paymentStatus)) {
+      order.paymentStatus = paymentStatus;
+    }
+
+    order.statusHistory.push({
+      status: order.status,
+      changedAt: new Date(),
+      note: note || `Admin cập nhật: Trạng thái ${order.status}, Thanh toán ${order.paymentStatus}`,
+    });
+
+    await order.save();
+    res.json({ success: true, order });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * 20. Xóa đơn hàng
+ */
+adminRouter.delete("/orders/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) return next(ApiError.notFound("Không tìm thấy đơn hàng"));
+    res.json({ success: true, message: `Đã xóa đơn hàng ${order.orderCode}` });
   } catch (err) {
     next(err);
   }

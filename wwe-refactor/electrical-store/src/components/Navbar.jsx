@@ -29,7 +29,7 @@ export default function Navbar({ logo = 'mark', links = [], right = null, logoHr
           <li key={l.label}><NavLink to={l.to} active={l.active}>{l.label}</NavLink></li>
         ))}
       </ul>
-      <div className="nav-right">
+      <div className="nav-right" style={{ display: 'flex', alignItems: 'center' }}>
         {right}
         {showAuth ? <AuthStatus /> : null}
       </div>

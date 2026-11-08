@@ -1,5 +1,7 @@
 import "./dns.js";
-import "dotenv/config";
+import path from "node:path";
+import dotenv from "dotenv";
+dotenv.config({ path: path.resolve(import.meta.dirname, "../.env") });
 import MongoStore from "connect-mongo";
 
 const mongoUri =

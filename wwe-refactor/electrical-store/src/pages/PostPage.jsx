@@ -28,6 +28,108 @@ const NOT_FOUND = {
     '<p>The article you are looking for does not exist or has been moved. Check the <a href="/blog">blog index</a> for the latest guides.</p>',
 };
 
+function RelThumb({ item }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [item?.img, item?.slug]);
+
+  const hasImage = Boolean(item?.img) && !failed;
+
+  return (
+    <div
+      className="rel-thumb"
+      style={{
+        background: item?.gradient ?? "linear-gradient(135deg,#1a0d08,#2d1506)",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      {item?.img ? (
+        <img
+          src={item.img}
+          alt={item.title || ""}
+          loading="lazy"
+          onError={(e) => {
+            if (e.target && e.target.naturalWidth === 0) {
+              setFailed(true);
+            }
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: hasImage ? "block" : "none",
+            zIndex: 1,
+          }}
+        />
+      ) : null}
+
+      {!hasImage ? (
+        <span style={{ fontSize: "1.5rem", userSelect: "none", zIndex: 1 }}>{item?.emoji || "🚀"}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function PostHeroImg({ post }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [post?.img, post?.slug]);
+
+  const hasImage = Boolean(post?.img) && !failed;
+
+  return (
+    <div
+      className="post-hero-img"
+      style={{
+        background: post?.gradient ?? "linear-gradient(135deg,#1a0d08,#2d1506)",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 40,
+      }}
+    >
+      {post?.img ? (
+        <img
+          src={post.img}
+          alt={post.title || ""}
+          loading="lazy"
+          onError={(e) => {
+            if (e.target && e.target.naturalWidth === 0) {
+              setFailed(true);
+            }
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: hasImage ? "block" : "none",
+            zIndex: 1,
+          }}
+        />
+      ) : null}
+
+      {!hasImage ? (
+        <span style={{ fontSize: "6rem", userSelect: "none", zIndex: 1 }}>{post?.emoji || "🔌"}</span>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Related Posts sidebar — fetches the most popular articles in the same
  * category, excluding the current one. Its own useApi call must live inside
@@ -56,18 +158,7 @@ function RelatedPosts({ category, exclude }) {
       key={rp.slug}
       onClick={() => navigate(`/blog/${rp.slug}`)}
     >
-      <div
-        className="rel-thumb"
-        style={{
-          background: rp.gradient,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "1.5rem",
-        }}
-      >
-        {rp.emoji}
-      </div>
+      <RelThumb item={rp} />
       <div>
         <h4>{rp.title}</h4>
         <span>
@@ -130,11 +221,6 @@ export default function PostPage() {
           { label: "Blog", to: "/blog", active: true },
           { label: "Contact", to: "/#contact-section" },
         ]}
-        right={
-          <Link to="/shop" className="nav-cta">
-            Shop Now →
-          </Link>
-        }
       />
 
       {loading ? (
@@ -188,26 +274,7 @@ export default function PostPage() {
                 <span>{readsLabel(post.reads)} reads</span>
               </div>
 
-              <div
-                className="post-hero-img"
-                style={
-                  post.img
-                    ? {
-                        backgroundImage: `url('${post.img}')`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }
-                    : {
-                        background: post.gradient,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "6rem",
-                      }
-                }
-              >
-                {post.img ? null : post.emoji}
-              </div>
+              <PostHeroImg post={post} />
 
               <div
                 className="post-content"

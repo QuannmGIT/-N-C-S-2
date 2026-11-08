@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth.jsx'
 
 /*
@@ -38,6 +38,8 @@ const logoutStyle = {
 
 export default function AuthStatus() {
   const { user, logout } = useAuth()
+  const location = useLocation()
+  const isBlog = location.pathname.startsWith('/blog')
 
   if (!user) {
     return (
@@ -58,6 +60,24 @@ export default function AuthStatus() {
         whiteSpace: 'nowrap',
       }}
     >
+      {isBlog && (
+        <Link
+          to="/blog/create"
+          title="Đăng bài viết mới lên Blog"
+          style={{
+            ...linkStyle,
+            fontSize: '0.75rem',
+            background: 'rgba(200, 65, 15, 0.1)',
+            border: '1px solid rgba(200, 65, 15, 0.35)',
+            padding: '3px 8px',
+            borderRadius: '6px',
+            color: 'var(--accent, #ff6b35)',
+            fontWeight: 700,
+          }}
+        >
+          ✍️ Đăng bài
+        </Link>
+      )}
       <Link to="/account" style={linkStyle}>
         Hi, <strong style={{ color: 'var(--accent, #ff6b35)' }}>{user.username}</strong>
       </Link>

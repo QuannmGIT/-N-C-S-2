@@ -23,7 +23,11 @@ export default function ProjectsPage() {
           { label: "Contact", to: "/#contact-section" },
         ]}
         right={
-          <a href="/#product-section" className="nav-cta">
+          <a
+            href="/#product-section"
+            className="nav-cta"
+            style={{ marginRight: "28px" }}
+          >
             Buy Components →
           </a>
         }

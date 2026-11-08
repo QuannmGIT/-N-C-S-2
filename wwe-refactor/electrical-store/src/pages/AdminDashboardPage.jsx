@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
+import { vnd } from "../lib/format.js";
 import ArticleContentBuilder from "../components/ArticleContentBuilder.jsx";
 
 const MONO = "'JetBrains Mono', monospace";
@@ -41,6 +42,15 @@ export default function AdminDashboardPage({ defaultTab = "products" }) {
   const [productList, setProductList] = useState([]);
   const [articleList, setArticleList] = useState([]);
   const [actionAlert, setActionAlert] = useState(null);
+
+  // Quản lý doanh thu & đơn hàng
+  const [revenueData, setRevenueData] = useState(null);
+  const [revenueFilter, setRevenueFilter] = useState({
+    status: "all",
+    paymentMethod: "all",
+    search: "",
+  });
+  const [revenueLoading, setRevenueLoading] = useState(false);
 
   // Form thêm bài viết Blog mới
   const [articleForm, setArticleForm] = useState({
@@ -124,21 +134,67 @@ export default function AdminDashboardPage({ defaultTab = "products" }) {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [statsRes, usersRes, prodsRes, articlesRes] = await Promise.all([
+      const [statsRes, usersRes, prodsRes, articlesRes, revenueRes] = await Promise.all([
         api("/api/admin/stats"),
         api("/api/admin/users"),
         api("/api/admin/products"),
         api("/api/admin/articles"),
+        api("/api/admin/revenue"),
       ]);
 
       if (statsRes.ok) setStats(statsRes.data);
       if (usersRes.ok) setUserList(usersRes.data);
       if (prodsRes.ok) setProductList(Array.isArray(prodsRes.data) ? prodsRes.data : []);
       if (articlesRes.ok) setArticleList(Array.isArray(articlesRes.data) ? articlesRes.data : []);
+      if (revenueRes.ok) setRevenueData(revenueRes.data);
     } catch {
       showNotification("Không thể nạp dữ liệu thống kê", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRevenueData = async () => {
+    try {
+      setRevenueLoading(true);
+      const res = await api("/api/admin/revenue");
+      if (res.ok) setRevenueData(res.data);
+    } catch {
+      showNotification("Không thể tải dữ liệu doanh thu", "error");
+    } finally {
+      setRevenueLoading(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, status, paymentStatus) => {
+    try {
+      const res = await api(`/api/admin/orders/${orderId}/status`, {
+        method: "PATCH",
+        body: { status, paymentStatus },
+      });
+      if (res.ok) {
+        showNotification("Cập nhật trạng thái đơn hàng thành công!");
+        fetchRevenueData();
+      } else {
+        showNotification(res.data?.error || "Cập nhật thất bại", "error");
+      }
+    } catch {
+      showNotification("Lỗi kết nối khi cập nhật đơn hàng", "error");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId, orderCode) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa đơn hàng ${orderCode}?`)) return;
+    try {
+      const res = await api(`/api/admin/orders/${orderId}`, { method: "DELETE" });
+      if (res.ok) {
+        showNotification(`Đã xóa đơn hàng ${orderCode}`);
+        fetchRevenueData();
+      } else {
+        showNotification(res.data?.error || "Không thể xóa đơn hàng", "error");
+      }
+    } catch {
+      showNotification("Lỗi kết nối khi xóa đơn hàng", "error");
     }
   };
 
@@ -656,6 +712,7 @@ export default function AdminDashboardPage({ defaultTab = "products" }) {
         }}
       >
         {[
+          { key: "revenue", label: `💰 Quản lý doanh thu (${revenueData?.orders?.length || 0})` },
           { key: "products", label: `📦 Quản lý linh kiện (${productList.length})` },
           { key: "articles", label: `📰 Quản lý bài viết Blog (${articleList.length})` },
           { key: "overview", label: "📊 Tổng quan hệ thống" },
@@ -691,6 +748,573 @@ export default function AdminDashboardPage({ defaultTab = "products" }) {
           </div>
         ) : (
           <>
+            {/* TAB: QUẢN LÝ DOANH THU & ĐƠN HÀNG */}
+            {activeTab === "revenue" && (
+              <div style={{ display: "grid", gap: "24px" }}>
+                {/* 1. HÀNG THẺ THỐNG KÊ DOANH THU (KPI CARDS) */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                    gap: "16px",
+                  }}
+                >
+                  {/* DOANH THU THỰC TẾ (PAID) */}
+                  <div
+                    style={{
+                      background: "linear-gradient(135deg, rgba(0, 255, 136, 0.12), rgba(0, 229, 255, 0.05))",
+                      border: "1px solid rgba(0, 255, 136, 0.35)",
+                      borderRadius: "12px",
+                      padding: "20px 22px",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "0.74rem", fontFamily: MONO, color: "#7a8fa6", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Tổng doanh thu thực tế (PAID)
+                      </span>
+                      <span style={{ fontSize: "1.3rem" }}>💰</span>
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: "1.6rem", fontWeight: 800, color: "#00ff88", letterSpacing: "-0.02em" }}>
+                      {vnd(revenueData?.summary?.totalRevenue || 0)}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#7a8fa6", marginTop: "6px" }}>
+                      ⚡ VietQR: <strong style={{ color: "#00e5ff" }}>{vnd(revenueData?.summary?.vietqrRevenue || 0)}</strong> · COD: {vnd(revenueData?.summary?.codRevenue || 0)}
+                    </div>
+                  </div>
+
+                  {/* DOANH THU CHỜ THANH TOÁN (UNPAID) */}
+                  <div
+                    style={{
+                      background: "linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04))",
+                      border: "1px solid rgba(245, 158, 11, 0.35)",
+                      borderRadius: "12px",
+                      padding: "20px 22px",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "0.74rem", fontFamily: MONO, color: "#7a8fa6", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Đang chờ thanh toán (UNPAID)
+                      </span>
+                      <span style={{ fontSize: "1.3rem" }}>⏳</span>
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: "1.6rem", fontWeight: 800, color: "#fbbf24", letterSpacing: "-0.02em" }}>
+                      {vnd(revenueData?.summary?.pendingRevenue || 0)}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#7a8fa6", marginTop: "6px" }}>
+                      <strong style={{ color: "#fbbf24" }}>{revenueData?.summary?.unpaidOrdersCount || 0}</strong> đơn hàng đang chờ khách quét VietQR
+                    </div>
+                  </div>
+
+                  {/* TỔNG ĐƠN HÀNG */}
+                  <div
+                    style={{
+                      background: "#0d141e",
+                      border: "1px solid rgba(0, 229, 255, 0.25)",
+                      borderRadius: "12px",
+                      padding: "20px 22px",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "0.74rem", fontFamily: MONO, color: "#7a8fa6", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Tổng số đơn hàng
+                      </span>
+                      <span style={{ fontSize: "1.3rem" }}>📦</span>
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: "1.6rem", fontWeight: 800, color: "#00e5ff" }}>
+                      {revenueData?.summary?.totalOrders || 0} <span style={{ fontSize: "0.9rem", color: "#7a8fa6", fontWeight: 500 }}>đơn</span>
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#7a8fa6", marginTop: "6px" }}>
+                      ✅ <strong style={{ color: "#00ff88" }}>{revenueData?.summary?.paidOrdersCount || 0}</strong> đã trả · ❌ {revenueData?.summary?.cancelledOrdersCount || 0} đã hủy
+                    </div>
+                  </div>
+
+                  {/* GIÁ TRỊ TRUNG BÌNH ĐƠN (AOV) */}
+                  <div
+                    style={{
+                      background: "#0d141e",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      borderRadius: "12px",
+                      padding: "20px 22px",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "0.74rem", fontFamily: MONO, color: "#7a8fa6", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Giá trị trung bình đơn (AOV)
+                      </span>
+                      <span style={{ fontSize: "1.3rem" }}>🎯</span>
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: "1.6rem", fontWeight: 800, color: "#e8edf2" }}>
+                      {vnd(revenueData?.summary?.aov || 0)}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#7a8fa6", marginTop: "6px" }}>
+                      Tính trên các đơn đã thanh toán thành công
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. BỘ LỌC ĐƠN HÀNG & TÌM KIẾM */}
+                <div
+                  style={{
+                    background: "#0d141e",
+                    border: "1px solid rgba(0, 229, 255, 0.2)",
+                    borderRadius: "12px",
+                    padding: "16px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "14px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: 1 }}>
+                    {/* Tìm kiếm */}
+                    <input
+                      type="text"
+                      placeholder="Tìm theo mã đơn (VC-...), tên khách, SĐT..."
+                      value={revenueFilter.search}
+                      onChange={(e) => setRevenueFilter((prev) => ({ ...prev, search: e.target.value }))}
+                      style={{
+                        padding: "8px 12px",
+                        background: "#05080c",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: "6px",
+                        color: "#fff",
+                        fontFamily: MONO,
+                        fontSize: "0.8rem",
+                        width: "280px",
+                      }}
+                    />
+
+                    {/* Lọc trạng thái thanh toán */}
+                    <select
+                      value={revenueFilter.status}
+                      onChange={(e) => setRevenueFilter((prev) => ({ ...prev, status: e.target.value }))}
+                      style={{
+                        padding: "8px 12px",
+                        background: "#05080c",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: "6px",
+                        color: "#00e5ff",
+                        fontFamily: MONO,
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="all">Tất cả thanh toán</option>
+                      <option value="PAID">✅ Đã thanh toán (PAID)</option>
+                      <option value="UNPAID">⏳ Chưa thanh toán (UNPAID)</option>
+                    </select>
+
+                    {/* Lọc phương thức thanh toán */}
+                    <select
+                      value={revenueFilter.paymentMethod}
+                      onChange={(e) => setRevenueFilter((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                      style={{
+                        padding: "8px 12px",
+                        background: "#05080c",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: "6px",
+                        color: "#e8edf2",
+                        fontFamily: MONO,
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="all">Tất cả phương thức</option>
+                      <option value="BANK_TRANSFER">⚡ Chuyển khoản VietQR</option>
+                      <option value="COD">📦 Tiền mặt (COD)</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={fetchRevenueData}
+                    disabled={revenueLoading}
+                    style={{
+                      background: "rgba(0, 229, 255, 0.1)",
+                      border: "1px solid rgba(0, 229, 255, 0.3)",
+                      color: "#00e5ff",
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      fontFamily: MONO,
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      cursor: revenueLoading ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>🔄</span>
+                    <span>{revenueLoading ? "Đang tải..." : "Làm mới dữ liệu"}</span>
+                  </button>
+                </div>
+
+                {/* 3. BẢNG DANH SÁCH ĐƠN HÀNG & HÓA ĐƠN CHI TIẾT */}
+                <div
+                  style={{
+                    background: "#0d141e",
+                    border: "1px solid rgba(0, 229, 255, 0.2)",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    overflowX: "auto",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "16px",
+                      borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+                      paddingBottom: "12px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "1.1rem" }}>📋</span>
+                      <h3 style={{ fontSize: "0.95rem", color: "#00e5ff", margin: 0, fontFamily: MONO, fontWeight: 700 }}>
+                        Danh sách hóa đơn &amp; giao dịch ({
+                          (revenueData?.orders || []).filter((ord) => {
+                            const matchStatus = revenueFilter.status === "all" || ord.paymentStatus === revenueFilter.status;
+                            const matchMethod = revenueFilter.paymentMethod === "all" || ord.paymentMethod === revenueFilter.paymentMethod;
+                            const q = revenueFilter.search.toLowerCase().trim();
+                            const matchSearch = !q || ord.orderCode.toLowerCase().includes(q) || ord.shipping?.fullName?.toLowerCase().includes(q) || ord.shipping?.phone?.includes(q);
+                            return matchStatus && matchMethod && matchSearch;
+                          }).length
+                        })
+                      </h3>
+                    </div>
+                  </div>
+
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: "0.8rem",
+                      fontFamily: MONO,
+                      textAlign: "left",
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.12)", color: "#7a8fa6" }}>
+                        <th style={{ padding: "10px 12px" }}>MÃ ĐƠN HÀNG</th>
+                        <th style={{ padding: "10px 12px" }}>KHÁCH HÀNG</th>
+                        <th style={{ padding: "10px 12px" }}>LINH KIỆN MUA</th>
+                        <th style={{ padding: "10px 12px" }}>TỔNG TIỀN</th>
+                        <th style={{ padding: "10px 12px" }}>PHƯƠNG THỨC</th>
+                        <th style={{ padding: "10px 12px" }}>THANH TOÁN</th>
+                        <th style={{ padding: "10px 12px" }}>TIẾN ĐỘ ĐƠN</th>
+                        <th style={{ padding: "10px 12px", textAlign: "right" }}>THAO TÁC DEV</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(revenueData?.orders || [])
+                        .filter((ord) => {
+                          const matchStatus = revenueFilter.status === "all" || ord.paymentStatus === revenueFilter.status;
+                          const matchMethod = revenueFilter.paymentMethod === "all" || ord.paymentMethod === revenueFilter.paymentMethod;
+                          const q = revenueFilter.search.toLowerCase().trim();
+                          const matchSearch = !q || ord.orderCode.toLowerCase().includes(q) || ord.shipping?.fullName?.toLowerCase().includes(q) || ord.shipping?.phone?.includes(q);
+                          return matchStatus && matchMethod && matchSearch;
+                        })
+                        .map((ord) => (
+                          <tr
+                            key={ord._id}
+                            style={{
+                              borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+                              transition: "background 0.15s",
+                            }}
+                          >
+                            {/* Cột 1: Mã đơn & thời gian */}
+                            <td style={{ padding: "12px", verticalAlign: "top" }}>
+                              <Link
+                                to={`/payment/${ord.orderCode}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  color: "#00e5ff",
+                                  fontWeight: 700,
+                                  textDecoration: "none",
+                                  display: "block",
+                                  marginBottom: "4px",
+                                }}
+                              >
+                                {ord.orderCode} ↗
+                              </Link>
+                              <span style={{ fontSize: "0.72rem", color: "#546e7a" }}>
+                                {new Date(ord.createdAt).toLocaleDateString("vi-VN")} {new Date(ord.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </td>
+
+                            {/* Cột 2: Khách hàng */}
+                            <td style={{ padding: "12px", verticalAlign: "top" }}>
+                              <div style={{ fontWeight: 700, color: "#fff" }}>{ord.shipping?.fullName}</div>
+                              <div style={{ color: "#7a8fa6", fontSize: "0.74rem" }}>{ord.shipping?.phone}</div>
+                              <div style={{ color: "#546e7a", fontSize: "0.7rem", marginTop: "2px", maxWidth: 160, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {ord.shipping?.province}
+                              </div>
+                            </td>
+
+                            {/* Cột 3: Linh kiện mua */}
+                            <td style={{ padding: "12px", verticalAlign: "top" }}>
+                              <div style={{ color: "#e8edf2", maxWidth: 220 }}>
+                                {(ord.items || []).map((it, idx) => (
+                                  <div key={idx} style={{ fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    • {it.name} <span style={{ color: "#00e5ff" }}>×{it.quantity}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div style={{ fontSize: "0.7rem", color: "#546e7a", marginTop: "2px" }}>
+                                Tổng: {ord.itemCount} sản phẩm
+                              </div>
+                            </td>
+
+                            {/* Cột 4: Tổng tiền */}
+                            <td style={{ padding: "12px", verticalAlign: "top" }}>
+                              <div style={{ fontWeight: 800, color: ord.paymentStatus === "PAID" ? "#00ff88" : "#fbbf24", fontSize: "0.92rem" }}>
+                                {vnd(ord.totalAmount)}
+                              </div>
+                              {ord.shippingFee > 0 && (
+                                <div style={{ fontSize: "0.68rem", color: "#546e7a" }}>
+                                  (Ship: {vnd(ord.shippingFee)})
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Cột 5: Phương thức */}
+                            <td style={{ padding: "12px", verticalAlign: "top" }}>
+                              {ord.paymentMethod === "BANK_TRANSFER" ? (
+                                <span style={{ color: "#00e5ff", fontWeight: 600 }}>
+                                  ⚡ VietQR
+                                </span>
+                              ) : (
+                                <span style={{ color: "#e8edf2" }}>
+                                  📦 COD
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Cột 6: Trạng thái thanh toán */}
+                            <td style={{ padding: "12px", verticalAlign: "top" }}>
+                              {ord.paymentStatus === "PAID" ? (
+                                <span
+                                  style={{
+                                    background: "rgba(0, 255, 136, 0.12)",
+                                    border: "1px solid rgba(0, 255, 136, 0.35)",
+                                    color: "#00ff88",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  ✅ ĐÃ TRẢ
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    background: "rgba(245, 158, 11, 0.12)",
+                                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                                    color: "#fbbf24",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  ⏳ CHỜ TRẢ
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Cột 7: Tiến độ đơn hàng */}
+                            <td style={{ padding: "12px", verticalAlign: "top" }}>
+                              <select
+                                value={ord.status}
+                                onChange={(e) => handleUpdateOrderStatus(ord._id, e.target.value, ord.paymentStatus)}
+                                style={{
+                                  padding: "4px 8px",
+                                  background: "#05080c",
+                                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                                  borderRadius: "4px",
+                                  color:
+                                    ord.status === "COMPLETED"
+                                      ? "#00ff88"
+                                      : ord.status === "CANCELLED"
+                                      ? "#f87171"
+                                      : ord.status === "SHIPPING"
+                                      ? "#00e5ff"
+                                      : "#fbbf24",
+                                  fontFamily: MONO,
+                                  fontSize: "0.72rem",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <option value="PENDING">Chờ xử lý (PENDING)</option>
+                                <option value="CONFIRMED">Đã xác nhận (CONFIRMED)</option>
+                                <option value="SHIPPING">Đang giao (SHIPPING)</option>
+                                <option value="COMPLETED">Hoàn tất (COMPLETED)</option>
+                                <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+                              </select>
+                            </td>
+
+                            {/* Cột 8: Thao tác Dev */}
+                            <td style={{ padding: "12px", verticalAlign: "top", textAlign: "right" }}>
+                              <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                                {ord.paymentStatus !== "PAID" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateOrderStatus(ord._id, "CONFIRMED", "PAID")}
+                                    title="Xác nhận đã nhận chuyển khoản VietQR"
+                                    style={{
+                                      background: "rgba(0, 255, 136, 0.12)",
+                                      border: "1px solid rgba(0, 255, 136, 0.35)",
+                                      color: "#00ff88",
+                                      padding: "3px 8px",
+                                      borderRadius: "4px",
+                                      fontFamily: MONO,
+                                      fontSize: "0.7rem",
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    ✓ Gạch nợ
+                                  </button>
+                                )}
+
+                                <Link
+                                  to={`/payment/${ord.orderCode}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Xem hóa đơn thanh toán VietQR"
+                                  style={{
+                                    background: "rgba(0, 229, 255, 0.1)",
+                                    border: "1px solid rgba(0, 229, 255, 0.3)",
+                                    color: "#00e5ff",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontFamily: MONO,
+                                    fontSize: "0.7rem",
+                                    textDecoration: "none",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  👁️ Hóa đơn
+                                </Link>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteOrder(ord._id, ord.orderCode)}
+                                  title="Xóa đơn hàng này"
+                                  style={{
+                                    background: "rgba(239, 68, 68, 0.1)",
+                                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                                    color: "#f87171",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontFamily: MONO,
+                                    fontSize: "0.7rem",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+
+                      {(revenueData?.orders || []).length === 0 && (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "#546e7a" }}>
+                            Chưa có đơn hàng nào được tạo trên hệ thống.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 4. TOP SẢN PHẨM MANG LẠI DOANH THU CAO NHẤT */}
+                {(revenueData?.topProducts || []).length > 0 && (
+                  <div
+                    style={{
+                      background: "#0d141e",
+                      border: "1px solid rgba(0, 229, 255, 0.2)",
+                      borderRadius: "12px",
+                      padding: "20px 24px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+                      <span style={{ fontSize: "1.1rem" }}>🏆</span>
+                      <h3 style={{ fontSize: "0.95rem", color: "#00e5ff", margin: 0, fontFamily: MONO, fontWeight: 700 }}>
+                        Top linh kiện đem lại doanh thu cao nhất
+                      </h3>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                        gap: "14px",
+                      }}
+                    >
+                      {revenueData.topProducts.map((prod, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            background: "#05080c",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            borderRadius: "8px",
+                            padding: "12px 14px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: "6px",
+                              background: "#0a0f16",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              overflow: "hidden",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {prod.image ? (
+                              <img src={prod.image} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                            ) : (
+                              <span>🔌</span>
+                            )}
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: MONO, fontSize: "0.78rem", fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {prod.name}
+                            </div>
+                            <div style={{ fontSize: "0.72rem", color: "#7a8fa6" }}>
+                              Đã bán: <strong style={{ color: "#00e5ff" }}>{prod.quantity}</strong> cái
+                            </div>
+                            <div style={{ fontFamily: MONO, fontSize: "0.82rem", fontWeight: 800, color: "#00ff88" }}>
+                              {vnd(prod.revenue)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* TAB: QUẢN LÝ LINH KIỆN */}
             {activeTab === "products" && (
               <div style={{ display: "grid", gap: "24px" }}>
@@ -2854,6 +3478,28 @@ export default function AdminDashboardPage({ defaultTab = "products" }) {
                   }}
                 >
                   <div
+                    onClick={() => setActiveTab("revenue")}
+                    style={{
+                      background: "linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 229, 255, 0.05))",
+                      border: "1px solid rgba(0, 255, 136, 0.3)",
+                      borderRadius: "12px",
+                      padding: "20px",
+                      cursor: "pointer",
+                      transition: "transform 0.15s",
+                    }}
+                  >
+                    <div style={{ fontSize: "0.75rem", color: "#7a8fa6", marginBottom: "8px" }}>
+                      TỔNG DOANH THU BÁN HÀNG (PAID)
+                    </div>
+                    <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#00ff88" }}>
+                      {vnd(revenueData?.summary?.totalRevenue || 0)}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#00e5ff", marginTop: "6px" }}>
+                      💰 {revenueData?.summary?.paidOrdersCount || 0} đơn đã thanh toán (Bấm xem chi tiết →)
+                    </div>
+                  </div>
+
+                  <div
                     style={{
                       background: "#0d141e",
                       border: "1px solid rgba(0, 229, 255, 0.15)",
@@ -2958,8 +3604,6 @@ export default function AdminDashboardPage({ defaultTab = "products" }) {
                         ? "ĐÃ KÍCH HOẠT (ACTIVE)"
                         : "CHƯA CẤU HÌNH"}
                     </strong>
-                    <br />
-                    Tài khoản Admin hiện tại: <code>@gay</code> (Mật khẩu: <code>mafugay</code>)
                   </p>
                 </div>
               </div>

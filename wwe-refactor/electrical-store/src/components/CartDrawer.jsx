@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useCart, changeQty, removeItem, clearCart } from "../lib/cart.js";
 import { vnd } from "../lib/format.js";
 import { useToast } from "../lib/toast.jsx";
@@ -9,6 +10,7 @@ import carts from "/assets/icons/cart.svg"
 export default function CartDrawer({ open, onClose }) {
   const cart = useCart();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
@@ -45,7 +47,13 @@ export default function CartDrawer({ open, onClose }) {
             cart.map((item) => (
               <div className="cart-item" key={item.id}>
                 <div className="cart-item-img">
-                  <img src={item.img} alt={item.name} />
+                  <img
+                    src={item.img}
+                    alt={item.name}
+                    onError={(e) => {
+                      e.target.src = "/assets/products/Microcontrollers.png";
+                    }}
+                  />
                 </div>
                 <div>
                   <div className="cart-item-name">{item.name}</div>
@@ -87,9 +95,16 @@ export default function CartDrawer({ open, onClose }) {
           </div>
           <button
             className="checkout-btn"
-            onClick={() => toast("🎉 Checkout coming soon!")}
+            onClick={() => {
+              if (cart.length === 0) {
+                toast("Giỏ hàng của bạn đang trống!");
+                return;
+              }
+              onClose();
+              navigate("/checkout");
+            }}
           >
-            Proceed to Checkout
+            Checkout →
           </button>
           <button className="clear-btn" onClick={() => clearCart()}>
             Remove all items

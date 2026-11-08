@@ -688,27 +688,12 @@ export default function ArticleContentBuilder({ value, onChange }) {
                         borderBottom: "1px solid rgba(26, 22, 18, 0.1)",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between",
+                        gap: "6px",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span>👁️</span>
-                        <span style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#c8410f" }}>
-                          Xem trước giao diện hiển thị trên Blog:
-                        </span>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: "0.68rem",
-                          color: "#3d3630",
-                          background: "#ede9e0",
-                          border: "1px solid rgba(26, 22, 18, 0.15)",
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Chuẩn màu Blog (#f5f2ec)
+                      <span>👁️</span>
+                      <span style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#c8410f" }}>
+                        Xem trước giao diện hiển thị trên Blog:
                       </span>
                     </div>
 
@@ -999,26 +984,11 @@ export default function ArticleContentBuilder({ value, onChange }) {
               letterSpacing: "0.05em",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              gap: "8px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span>👁️</span>
-              <span>Xem trước giao diện hiển thị trên Blog (/blog/:slug):</span>
-            </div>
-            <span
-              style={{
-                fontSize: "0.7rem",
-                color: "#1a1612",
-                background: "#ede9e0",
-                border: "1px solid rgba(26, 22, 18, 0.15)",
-                padding: "3px 12px",
-                borderRadius: "100px",
-                fontWeight: 600,
-              }}
-            >
-              Chuẩn 100% màu Retro Paper (#f5f2ec)
-            </span>
+            <span>👁️</span>
+            <span>Xem trước giao diện hiển thị trên Blog (/blog/:slug):</span>
           </div>
 
           {/* Render HTML Content với style mô phỏng bài viết thực */}
